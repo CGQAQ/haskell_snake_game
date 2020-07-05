@@ -1,4 +1,13 @@
-module Core where
+module Src.Core (
+    width
+  , height
+  , GameState
+) where
+
+
+width  = 20 ::Int
+height = 15 ::Int
+
 
 data Direction = D_Up | D_Down | D_Left | D_Right deriving(Show, Eq)
 
@@ -9,23 +18,26 @@ data Node = Node{ nodeType::NodeType
                 , node_y :: Int
                 } deriving (Show, Eq)
 
-initState = [ Node { nodeType=Body
-                   , node_x = 0
-                   , node_y = 0
-                   }
-            , Node { nodeType=Body
-                   , node_x = 1
-                   , node_y = 0
-                   }
-            , Node { nodeType=Body
-                   , node_x = 2
-                   , node_y = 0
-                   }
-            , Node { nodeType=Head
-                   , node_x = 3
-                   , node_y = 0
-                   }
-            ]
+initState = SnakeState { snakeMoveDir=D_Right
+                       , snakeInnerStates = 
+                           [ Node { nodeType=Body
+                           , node_x = 0
+                           , node_y = 0
+                           }
+                           , Node { nodeType=Body
+                           , node_x = 1
+                           , node_y = 0
+                           }
+                           , Node { nodeType=Body
+                           , node_x = 2
+                           , node_y = 0
+                           }
+                           , Node { nodeType=Head
+                           , node_x = 3
+                           , node_y = 0
+                           }
+                           ]
+                       }
 
 data SnakeState = SnakeState { snakeMoveDir :: Direction
                              , snakeInnerStates :: [Node]
@@ -46,3 +58,41 @@ moveSnake SnakeState{ snakeMoveDir = dir, snakeInnerStates = states } =
                                         ++ [Node {nodeType = Body, node_x = (node_x l), node_y = (node_y l)}] 
                                         ++ [Node {nodeType=Head, node_x = (node_x l) + dx, node_y = (node_y l) + dy}])
           m' = m states
+
+-- (unfoldr (Just . uniformR (1, 6)) $ mkStdGen 137) !! 1
+-- genFood :: 
+-- genFood
+
+data GameStatus = Stopped
+                | Playing
+                | Paused
+type FoodLocation = (Int, Int)
+
+data GameState = GameState{
+    tick           :: Integer
+  , gs_status      :: GameStatus
+  , gs_snakeStates :: SnakeState
+  , gs_food        :: FoodLocation
+}
+
+-- ---------------------------------------------------------------------------------------------
+-- testMoveSnake :: Test
+-- testMoveSnake = 
+--     TestCase $ assertEqual $ "right: " SnakeState{snakeMoveDir=D_Right, snakeInnerStates=[
+--             Node { nodeType=Body
+--                    , node_x = 1
+--                    , node_y = 0
+--                    }
+--             , Node { nodeType=Body
+--                    , node_x = 2
+--                    , node_y = 0
+--                    }
+--             , Node { nodeType=Body
+--                    , node_x = 3
+--                    , node_y = 0
+--                    }
+--             , Node { nodeType=Head
+--                    , node_x = 4
+--                    , node_y = 0
+--                    }]}
+--             moveSnake SnakeState{snakeMoveDir=D_Right, snakeInnerStates=initState}
