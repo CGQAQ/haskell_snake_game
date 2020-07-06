@@ -36,5 +36,5 @@ main =
                 -> IO ()
         -}
         in
-                play  display_  white  0  initGame  renderer  eventHandler  ticker
+                play display_ white 1 initGame renderer eventHandler ticker
 

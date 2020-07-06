@@ -11,6 +11,8 @@ module Src.Core (
   , renderer
 ) where
 
+import Debug.Trace
+
 import Graphics.Gloss
 import Graphics.Gloss.Data.Picture
 import Graphics.Gloss.Interface.Pure.Game
@@ -30,7 +32,7 @@ block_grey = color (greyN 0.7) (rectangleSolid (fromIntegral (toPixel 1)) (fromI
 -- 1/2*W - 1/2w
 normalize :: Int -> Int -> Picture -> Picture
 normalize x y p = 
-  Translate ((0.5 * fromIntegral(width  - 1) + fromIntegral   x ) * fromIntegral (-unit))
+  Translate ((0.5 * fromIntegral(width  - 1) + fromIntegral (-x) ) * fromIntegral (-unit))
             ((0.5 * fromIntegral(height - 1) + fromIntegral (-y)) * fromIntegral (-unit)) 
             p
 
@@ -44,15 +46,17 @@ initGame = GameState {
 
 ticker :: Float -> GameState -> GameState
 ticker tick gs@(GameState{gs_snakeStates=gs_states}) = 
-        gs{gs_snakeStates = moveSnake gs_states}
+        traceShowId $ gs{gs_snakeStates = moveSnake gs_states}
 
 eventHandler :: Event -> GameState -> GameState
 eventHandler e gs = gs
 
 renderer :: GameState -> Picture
 renderer state = 
-        pictures $ map (\Node{node_x=x, node_y=y} -> normalize x y block_black) snake
+        -- traceShow (gs_snakeStates state) $ 
+          pictures $ map (\Node{node_x=x, node_y=y} -> normalize x y block_black) snake
         where snake = snakeInnerStates $ gs_snakeStates state
+        -- normalize (-1) 0 block_black
 
 
 data Direction = D_Up | D_Down | D_Left | D_Right deriving(Show, Eq)
@@ -96,8 +100,8 @@ moveSnake SnakeState{ snakeMoveDir = dir, snakeInnerStates = states } =
         case dir of
             D_Up    -> m'   0   1
             D_Down  -> m'   0 (-1)
-            D_Left  -> m'   1   0
-            D_Right -> m' (-1)  0
+            D_Left  -> m' (-1)  0
+            D_Right -> m'   1   0
     }
     where m = (\snakeStates dx dy -> let (x:xs) = snakeStates; l = last xs; o = takeWhile (\it -> nodeType it == Body) xs 
                                      in    o 
@@ -112,14 +116,15 @@ moveSnake SnakeState{ snakeMoveDir = dir, snakeInnerStates = states } =
 data GameStatus = Stopped
                 | Playing
                 | Paused
-type FoodLocation = (Int, Int)
+                deriving (Show)
+type FoodLocation = (Int, Int) 
 
 data GameState = GameState{
     tick           :: Integer
   , gs_status      :: GameStatus
   , gs_snakeStates :: SnakeState
   , gs_food        :: Maybe FoodLocation
-}
+} deriving (Show)
 
 -- ---------------------------------------------------------------------------------------------
 -- testMoveSnake :: Test
