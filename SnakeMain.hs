@@ -2,7 +2,8 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 
 import Src.Core (
-        width
+        toPixel
+      , width
       , height
       , GameState
 
@@ -13,13 +14,13 @@ import Src.Core (
       , renderer
     )
 
-unit = 40 :: Int
+
 
 main :: IO ()
 main = 
         let display_ = (InWindow
                         "Hello World"     -- window title
-                                (width * unit, height * unit)       -- window size
+                                (toPixel width, toPixel height)       -- window size
                                 (10, 10))        -- window position
         {-
                 play    :: Display              -- ^ Display mode.

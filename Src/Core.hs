@@ -1,5 +1,6 @@
 module Src.Core (
-    width
+    toPixel
+  , width
   , height
   , GameState
 
@@ -14,8 +15,24 @@ import Graphics.Gloss
 import Graphics.Gloss.Data.Picture
 import Graphics.Gloss.Interface.Pure.Game
 
+unit = 40 :: Int
 width  = 20 ::Int
 height = 15 ::Int
+toPixel :: Int -> Int
+toPixel x = x * unit
+
+block_black :: Picture
+block_black = (rectangleSolid (fromIntegral (toPixel 1)) (fromIntegral (toPixel 1)))
+
+block_grey :: Picture
+block_grey = color (greyN 0.7) (rectangleSolid (fromIntegral (toPixel 1)) (fromIntegral (toPixel 1)))
+
+-- 1/2*W - 1/2w
+normalize :: Int -> Int -> Picture -> Picture
+normalize x y p = 
+  Translate ((0.5 * fromIntegral(width  - 1) + fromIntegral   x ) * fromIntegral (-unit))
+            ((0.5 * fromIntegral(height - 1) + fromIntegral (-y)) * fromIntegral (-unit)) 
+            p
 
 initGame = GameState { 
                        tick = 0
@@ -34,7 +51,9 @@ eventHandler e gs = gs
 
 renderer :: GameState -> Picture
 renderer state = 
-        rectangleSolid 100 200
+        pictures [ normalize 0 1 block_black
+                 , normalize 0 2 block_grey
+                 ]
 
 
 data Direction = D_Up | D_Down | D_Left | D_Right deriving(Show, Eq)
