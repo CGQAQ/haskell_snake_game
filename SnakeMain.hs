@@ -5,20 +5,22 @@ import Src.Core (
         width
       , height
       , GameState
+
+      , initGame
+
+      , ticker
+      , eventHandler
+      , renderer
     )
 
 unit = 40 :: Int
 
 main :: IO ()
-main = do
-        display_ <- display
-                        (InWindow
+main = 
+        let display_ = (InWindow
                         "Hello World"     -- window title
                                 (width * unit, height * unit)       -- window size
                                 (10, 10))        -- window position
-                        green                    -- background color
-                        picture                  -- picture to display
-        print "hello"
         {-
                 play    :: Display              -- ^ Display mode.
                 -> Color                -- ^ Background color.
@@ -32,21 +34,6 @@ main = do
                         --   It is passed the period of time (in seconds) needing to be advanced.
                 -> IO ()
         -}
-        -- play $ display_ $ white $ 0 $ GameState{} $ renderer $ eventHandler $ ticker
+        in
+                play  display_  white  0  initGame  renderer  eventHandler  ticker
 
-ticker :: Float -> GameState -> GameState
-ticker tick gs = 
-        undefined
-
-eventHandler :: Event -> GameState -> GameState
-eventHandler = undefined
-
-renderer :: GameState -> Picture
-renderer state = 
-        picture
-
-picture :: Picture
-picture
-        = Translate (-170) (-20) -- shift the text to the middle of the window
-        $ Scale 0.5 0.5          -- display it half the original size
-        $ Text "Hello World"     -- text to display

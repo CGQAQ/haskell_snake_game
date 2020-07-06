@@ -2,11 +2,39 @@ module Src.Core (
     width
   , height
   , GameState
+
+  , initGame
+
+  , ticker
+  , eventHandler
+  , renderer
 ) where
 
+import Graphics.Gloss
+import Graphics.Gloss.Data.Picture
+import Graphics.Gloss.Interface.Pure.Game
 
 width  = 20 ::Int
 height = 15 ::Int
+
+initGame = GameState { 
+                       tick = 0
+                     , gs_status = Stopped
+                     , gs_snakeStates = initState
+                     , gs_food = Nothing
+                     }
+
+
+ticker :: Float -> GameState -> GameState
+ticker tick gs@(GameState{gs_snakeStates=gs_states}) = 
+        gs{gs_snakeStates = moveSnake gs_states}
+
+eventHandler :: Event -> GameState -> GameState
+eventHandler e gs = gs
+
+renderer :: GameState -> Picture
+renderer state = 
+        rectangleSolid 100 200
 
 
 data Direction = D_Up | D_Down | D_Left | D_Right deriving(Show, Eq)
@@ -72,7 +100,7 @@ data GameState = GameState{
     tick           :: Integer
   , gs_status      :: GameStatus
   , gs_snakeStates :: SnakeState
-  , gs_food        :: FoodLocation
+  , gs_food        :: Maybe FoodLocation
 }
 
 -- ---------------------------------------------------------------------------------------------
