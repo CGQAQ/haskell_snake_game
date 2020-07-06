@@ -1,3 +1,5 @@
+{-# LANGUAGE MultiWayIf #-}
+
 module Src.Core (
     toPixel
   , width
@@ -13,9 +15,13 @@ module Src.Core (
 
 import Debug.Trace
 
+import Data.List
+
 import Graphics.Gloss
 import Graphics.Gloss.Data.Picture
 import Graphics.Gloss.Interface.Pure.Game
+
+import System.Random
 
 unit = 40 :: Int
 width  = 20 ::Int
@@ -27,7 +33,10 @@ block_black :: Picture
 block_black = (rectangleSolid (fromIntegral (toPixel 1)) (fromIntegral (toPixel 1)))
 
 block_grey :: Picture
-block_grey = color (greyN 0.7) (rectangleSolid (fromIntegral (toPixel 1)) (fromIntegral (toPixel 1)))
+block_grey = color (greyN 0.5) (rectangleSolid (fromIntegral (toPixel 1)) (fromIntegral (toPixel 1)))
+
+block_food :: Picture
+block_food = color (greyN 0.3) (rectangleSolid (fromIntegral (toPixel 1)) (fromIntegral (toPixel 1)))
 
 -- 1/2*W - 1/2w
 normalize :: Int -> Int -> Picture -> Picture
@@ -36,8 +45,9 @@ normalize x y p =
             ((0.5 * fromIntegral(height - 1) + fromIntegral (-y)) * fromIntegral (-unit)) 
             p
 
-initGame = GameState { 
-                       tick = 0
+initGame = GameState { tick = 0
+                     , gs_score = 0
+                     , gs_needGrow = False
                      , gs_status = Stopped
                      , gs_snakeStates = initState
                      , gs_food = Nothing
@@ -46,14 +56,30 @@ initGame = GameState {
 
 ticker :: Float -> GameState -> GameState
 {-
-  tick           :: Integer
+    gs_score       :: Int
+  , gs_needGrow    :: Bool
   , gs_status      :: GameStatus
   , gs_snakeStates :: SnakeState
   , gs_food        :: Maybe FoodLocation
 -}
-ticker tick gs@( GameState _ status snake food )
-        | status == Playing = gs{gs_snakeStates = moveSnake snake}
-        | otherwise = gs
+ticker _ gs@( GameState tick sc ng status snake food ) = 
+        gs { tick = tick'
+           , gs_score = sc
+           , gs_needGrow =ng
+           , gs_status = status
+           , gs_snakeStates = snake'
+           , gs_food = food
+           }
+        where tick'  = tick + 1 
+              snake' = traceShow tick $ case status of
+                             Playing -> moveSnake snake
+                             otherwise -> snake
+              food'  = traceShowId $ case food of
+                            Just _  -> food
+                            Nothing -> Just $ genFood tick
+
+        --  status == Playing = gs{gs_snakeStates = moveSnake snake}
+        --  otherwise = gs
 
 eventHandler :: Event -> GameState -> GameState
 eventHandler (EventKey key Down modkey (x, y)) gs = 
@@ -92,8 +118,17 @@ eventHandler _ gs = gs
 renderer :: GameState -> Picture
 renderer state = 
         -- traceShow (gs_snakeStates state) $ 
-          pictures $ map (\Node{node_x=x, node_y=y} -> normalize x y block_black) snake
+          pictures $ food' : map (
+            \n@Node{node_x=x, node_y=y} -> 
+                  let t = nodeType n in if
+                  | t == Head -> normalize x y block_black
+                  | t == Body -> normalize x y block_grey
+            ) snake
         where snake = snakeInnerStates $ gs_snakeStates state
+              food  = gs_food state
+              food' = case food of
+                           Just (x, y) -> normalize x y block_food
+                           Nothing     -> Blank
         -- normalize (-1) 0 block_black
 
 
@@ -148,8 +183,11 @@ moveSnake SnakeState{ snakeMoveDir = dir, snakeInnerStates = states } =
           m' = m states
 
 -- (unfoldr (Just . uniformR (1, 6)) $ mkStdGen 137) !! 1
--- genFood :: 
--- genFood
+genFood :: Int -> FoodLocation
+genFood t = 
+  (xs, ys)
+  where xs = (unfoldr (Just . uniformR (0, 20)) $ mkStdGen 137) !! t :: Int
+        ys = (unfoldr (Just . uniformR (0, 15)) $ mkStdGen 137) !! t :: Int
 
 data GameStatus = Stopped
                 | Playing
@@ -158,7 +196,10 @@ data GameStatus = Stopped
 type FoodLocation = (Int, Int) 
 
 data GameState = GameState{
-    tick           :: Integer
+    tick           :: Int
+  , gs_score       :: Int
+  -- , gs_needFood    :: Bool -- Just look at gs_food if its Nothing
+  , gs_needGrow    :: Bool
   , gs_status      :: GameStatus
   , gs_snakeStates :: SnakeState
   , gs_food        :: Maybe FoodLocation
