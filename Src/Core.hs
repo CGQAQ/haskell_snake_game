@@ -16,6 +16,7 @@ module Src.Core (
 import Debug.Trace
 
 import Data.List
+-- import Data.Time.Clock.POSIX (getPOSIXTime)
 
 import Graphics.Gloss
 import Graphics.Gloss.Data.Picture
@@ -68,14 +69,18 @@ ticker _ gs@( GameState tick sc ng status snake food ) =
            , gs_needGrow =ng
            , gs_status = status
            , gs_snakeStates = snake'
-           , gs_food = food
+           , gs_food = food'
            }
         where tick'  = tick + 1 
-              snake' = traceShow tick $ case status of
+              snake' = case status of
                              Playing -> moveSnake snake
                              otherwise -> snake
-              food'  = traceShowId $ case food of
-                            Just _  -> food
+              head_x = node_x $ last $ snakeInnerStates snake'
+              head_y = node_y $ last $ snakeInnerStates snake'
+              food'  = case food of
+                            Just x  -> if
+                                       | x == (head_x, head_y)  -> Nothing
+                                       | otherwise -> food
                             Nothing -> Just $ genFood tick
 
         --  status == Playing = gs{gs_snakeStates = moveSnake snake}
@@ -107,7 +112,7 @@ eventHandler (EventKey key Down modkey (x, y)) gs =
                       | status == Playing -> gs{gs_status = Paused}
                       | otherwise -> gs
                     -- reset game
-                    KeyEnd -> gs{gs_status = Stopped, gs_snakeStates = initState}
+                    KeyEnd -> gs{gs_status = Stopped, gs_snakeStates = initState, gs_food=Nothing}
                     _ -> gs
     _ -> gs
   where status     = gs_status gs
@@ -186,8 +191,8 @@ moveSnake SnakeState{ snakeMoveDir = dir, snakeInnerStates = states } =
 genFood :: Int -> FoodLocation
 genFood t = 
   (xs, ys)
-  where xs = (unfoldr (Just . uniformR (0, 20)) $ mkStdGen 137) !! t :: Int
-        ys = (unfoldr (Just . uniformR (0, 15)) $ mkStdGen 137) !! t :: Int
+  where xs = (unfoldr (Just . uniformR (0, 19)) $ mkStdGen (137+t)) !! t :: Int
+        ys = (unfoldr (Just . uniformR (0, 14)) $ mkStdGen (137+t)) !! t :: Int
 
 data GameStatus = Stopped
                 | Playing
