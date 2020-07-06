@@ -51,9 +51,8 @@ eventHandler e gs = gs
 
 renderer :: GameState -> Picture
 renderer state = 
-        pictures [ normalize 0 1 block_black
-                 , normalize 0 2 block_grey
-                 ]
+        pictures $ map (\Node{node_x=x, node_y=y} -> normalize x y block_black) snake
+        where snake = snakeInnerStates $ gs_snakeStates state
 
 
 data Direction = D_Up | D_Down | D_Left | D_Right deriving(Show, Eq)
@@ -95,10 +94,10 @@ moveSnake :: SnakeState -> SnakeState
 moveSnake SnakeState{ snakeMoveDir = dir, snakeInnerStates = states } = 
     SnakeState{snakeMoveDir = dir, snakeInnerStates =
         case dir of
-            D_Up    -> m'   0 (-1)
-            D_Down  -> m'   0   1
-            D_Left  -> m' (-1)  0
-            D_Right -> m'   1   0
+            D_Up    -> m'   0   1
+            D_Down  -> m'   0 (-1)
+            D_Left  -> m'   1   0
+            D_Right -> m' (-1)  0
     }
     where m = (\snakeStates dx dy -> let (x:xs) = snakeStates; l = last xs; o = takeWhile (\it -> nodeType it == Body) xs 
                                      in    o 
