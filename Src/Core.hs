@@ -45,11 +45,49 @@ initGame = GameState {
 
 
 ticker :: Float -> GameState -> GameState
-ticker tick gs@(GameState{gs_snakeStates=gs_states}) = 
-        traceShowId $ gs{gs_snakeStates = moveSnake gs_states}
+{-
+  tick           :: Integer
+  , gs_status      :: GameStatus
+  , gs_snakeStates :: SnakeState
+  , gs_food        :: Maybe FoodLocation
+-}
+ticker tick gs@( GameState _ status snake food )
+        | status == Playing = gs{gs_snakeStates = moveSnake snake}
+        | otherwise = gs
 
 eventHandler :: Event -> GameState -> GameState
-eventHandler e gs = gs
+eventHandler (EventKey key Down modkey (x, y)) gs = 
+  -- case trace "key pushed" key of
+  case key of
+    SpecialKey s -> case s of
+                    {- move around -}
+                    KeyLeft 
+                      | dir == D_Right -> gs
+                      | otherwise -> gs{gs_snakeStates = snakeState{snakeMoveDir=D_Left}}
+                    KeyRight 
+                      | dir == D_Left -> gs
+                      | otherwise -> gs{gs_snakeStates = snakeState{snakeMoveDir=D_Right}}
+                    KeyUp 
+                      | dir == D_Down -> gs
+                      | otherwise -> gs{gs_snakeStates = snakeState{snakeMoveDir=D_Up}}
+                    KeyDown 
+                      | dir == D_Up -> gs
+                      | otherwise -> gs{gs_snakeStates = snakeState{snakeMoveDir=D_Down}}
+
+                    {- game status control -}
+                    -- start/pause game
+                    KeyHome
+                      | status == Stopped || status == Paused -> gs{gs_status = Playing}
+                      | status == Playing -> gs{gs_status = Paused}
+                      | otherwise -> gs
+                    -- reset game
+                    KeyEnd -> gs{gs_status = Stopped, gs_snakeStates = initState}
+                    _ -> gs
+    _ -> gs
+  where status     = gs_status gs
+        snakeState = gs_snakeStates gs
+        dir        = snakeMoveDir snakeState
+eventHandler _ gs = gs
 
 renderer :: GameState -> Picture
 renderer state = 
@@ -116,7 +154,7 @@ moveSnake SnakeState{ snakeMoveDir = dir, snakeInnerStates = states } =
 data GameStatus = Stopped
                 | Playing
                 | Paused
-                deriving (Show)
+                deriving (Show, Eq)
 type FoodLocation = (Int, Int) 
 
 data GameState = GameState{
