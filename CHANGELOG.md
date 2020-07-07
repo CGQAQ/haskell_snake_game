@@ -1,4 +1,4 @@
-# Revision history for SnaKeGame
+# Revision history for SnakeGame
 
 ## 0.1.0.0 -- YYYY-mm-dd
 
