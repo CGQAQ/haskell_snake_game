@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiWayIf #-}
+{-# OPTIONS -Wall #-} 
 
 module Src.Core (
     toPixel
@@ -48,7 +49,6 @@ normalize x y p =
 
 initGame = GameState { tick = 0
                      , gs_score = 0
-                     , gs_needGrow = False
                      , gs_status = Stopped
                      , gs_snakeStates = initState
                      , gs_food = Nothing
@@ -59,29 +59,41 @@ ticker :: Float -> GameState -> GameState
 {-
     gs_score       :: Int
   , gs_needGrow    :: Bool
-  , gs_status      :: GameStatus
   , gs_snakeStates :: SnakeState
   , gs_food        :: Maybe FoodLocation
 -}
-ticker _ gs@( GameState tick sc ng status snake food ) = 
+ticker _ gs@( GameState tick sc status snake food ) 
+    | head_x < 0 || head_x > width - 1  = reset
+    | head_y < 0 || head_y > height - 1 = reset
+    | otherwise = 
         gs { tick = tick'
-           , gs_score = sc
-           , gs_needGrow =ng
+           , gs_score = score'
            , gs_status = status
            , gs_snakeStates = snake'
            , gs_food = food'
            }
         where tick'  = tick + 1 
               snake' = case status of
-                             Playing -> moveSnake snake
-                             otherwise -> snake
+                             Playing -> case food of
+                                        -- otherwise -> traceShowId $ moveSnake snake{snakeNeedGrow=True}
+                                        Nothing -> moveSnake snake{snakeNeedGrow=True}
+                                        _ -> moveSnake snake
+                             _ -> snake
+              score' = case status of
+                             Playing -> case food of
+                                        -- otherwise -> traceShowId $ moveSnake snake{snakeNeedGrow=True}
+                                        Nothing -> sc + 1
+                                        _ -> sc
+                             _ -> sc
               head_x = node_x $ last $ snakeInnerStates snake'
               head_y = node_y $ last $ snakeInnerStates snake'
               food'  = case food of
-                            Just x  -> if
-                                       | x == (head_x, head_y)  -> Nothing
-                                       | otherwise -> food
-                            Nothing -> Just $ genFood tick
+                       Just x  -> if
+                                  | x == (head_x, head_y)  -> Nothing
+                                  | otherwise -> gs_food gs
+                       Nothing -> Just $ genFood tick
+
+              reset  = gs{gs_status = Stopped, gs_snakeStates = initState, gs_food=Nothing, gs_score=0}
 
         --  status == Playing = gs{gs_snakeStates = moveSnake snake}
         --  otherwise = gs
@@ -112,7 +124,7 @@ eventHandler (EventKey key Down modkey (x, y)) gs =
                       | status == Playing -> gs{gs_status = Paused}
                       | otherwise -> gs
                     -- reset game
-                    KeyEnd -> gs{gs_status = Stopped, gs_snakeStates = initState, gs_food=Nothing}
+                    KeyEnd -> gs{gs_status = Stopped, gs_snakeStates = initState, gs_food=Nothing, gs_score=0}
                     _ -> gs
     _ -> gs
   where status     = gs_status gs
@@ -123,7 +135,14 @@ eventHandler _ gs = gs
 renderer :: GameState -> Picture
 renderer state = 
         -- traceShow (gs_snakeStates state) $ 
-          pictures $ food' : map (
+          pictures $ 
+                    [Translate 
+                          (-0.5 * fromIntegral (toPixel width)) 
+                          (0.5 * fromIntegral (toPixel height) - 22) $
+                          Scale 0.3 0.2 $
+                          Text $ "Frames: " ++ (show $ tick state) ++ " Score: " ++ (show $ gs_score state)
+                    , food'] 
+                  ++ map (
             \n@Node{node_x=x, node_y=y} -> 
                   let t = nodeType n in if
                   | t == Head -> normalize x y block_black
@@ -147,6 +166,7 @@ data Node = Node{ nodeType::NodeType
                 } deriving (Show, Eq)
 
 initState = SnakeState { snakeMoveDir=D_Right
+                       , snakeNeedGrow=False
                        , snakeInnerStates = 
                            [ Node { nodeType=Body
                            , node_x = 0
@@ -168,23 +188,35 @@ initState = SnakeState { snakeMoveDir=D_Right
                        }
 
 data SnakeState = SnakeState { snakeMoveDir :: Direction
+                             , snakeNeedGrow::Bool
                              , snakeInnerStates :: [Node]
                              }
                             deriving(Show, Eq)
 
 moveSnake :: SnakeState -> SnakeState
-moveSnake SnakeState{ snakeMoveDir = dir, snakeInnerStates = states } = 
-    SnakeState{snakeMoveDir = dir, snakeInnerStates =
-        case dir of
-            D_Up    -> m'   0   1
-            D_Down  -> m'   0 (-1)
-            D_Left  -> m' (-1)  0
-            D_Right -> m'   1   0
+moveSnake SnakeState{ snakeMoveDir = dir, snakeInnerStates = states, snakeNeedGrow = ng} = 
+    SnakeState { snakeMoveDir = dir
+               , snakeInnerStates =
+                    case dir of
+                    D_Up    -> m'   0   1
+                    D_Down  -> m'   0 (-1)
+                    D_Left  -> m' (-1)  0
+                    D_Right -> m'   1   0
+               , snakeNeedGrow = False
     }
     where m = (\snakeStates dx dy -> let (x:xs) = snakeStates; l = last xs; o = takeWhile (\it -> nodeType it == Body) xs 
-                                     in    o 
-                                        ++ [Node {nodeType = Body, node_x = (node_x l), node_y = (node_y l)}] 
-                                        ++ [Node {nodeType=Head, node_x = (node_x l) + dx, node_y = (node_y l) + dy}])
+                                     in
+                                        if  
+                                          |ng==False -> 
+                                                o 
+                                            ++ [Node {nodeType = Body, node_x = (node_x l), node_y = (node_y l)}] 
+                                            ++ [Node {nodeType=Head, node_x = (node_x l) + dx, node_y = (node_y l) + dy}]
+                                          |ng==True -> 
+                                                  [x]
+                                              ++  o
+                                              ++ [Node {nodeType = Body, node_x = (node_x l), node_y = (node_y l)}] 
+                                              ++ [Node {nodeType=Head, node_x = (node_x l) + dx, node_y = (node_y l) + dy}])
+                                      
           m' = m states
 
 -- (unfoldr (Just . uniformR (1, 6)) $ mkStdGen 137) !! 1
@@ -204,7 +236,7 @@ data GameState = GameState{
     tick           :: Int
   , gs_score       :: Int
   -- , gs_needFood    :: Bool -- Just look at gs_food if its Nothing
-  , gs_needGrow    :: Bool
+  -- , gs_needGrow    :: Bool -- Moved to SnakeState
   , gs_status      :: GameStatus
   , gs_snakeStates :: SnakeState
   , gs_food        :: Maybe FoodLocation
