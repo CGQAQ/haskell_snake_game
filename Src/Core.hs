@@ -65,6 +65,7 @@ ticker :: Float -> GameState -> GameState
 ticker _ gs@( GameState tick sc status snake food ) 
   | head_x < 0 || head_x > width - 1  = reset
   | head_y < 0 || head_y > height - 1 = reset
+  | (head_x, head_y) `elem` snakeBody = reset
   | otherwise = 
     gs { tick = tick'
         , gs_score = score'
@@ -72,30 +73,29 @@ ticker _ gs@( GameState tick sc status snake food )
         , gs_snakeStates = snake'
         , gs_food = food'
         }
-  where tick'  = tick + 1 
-        snake' = case status of
-                 Playing -> case food of
-                            Nothing -> moveSnake snake{snakeNeedGrow=True}
-                            _ -> moveSnake snake
-                 _ -> snake
-        score' = case status of
-                 Playing -> case food of
-                            Nothing -> sc + 1
-                            _ -> sc
-                 _ -> sc
-        head_x = node_x $ last $ snakeInnerStates snake'
-        head_y = node_y $ last $ snakeInnerStates snake'
-        food'  = case food of
-                 Just x  -> if
-                            | x == (head_x, head_y) -> Nothing
-                            | otherwise             -> gs_food gs
-                 Nothing -> Just $ genFood tick
-
-        reset  = gs { gs_status = Stopped
-                    , gs_snakeStates = initState
-                    , gs_food=Nothing, gs_score=0
-                    }
-
+  where tick'     = tick + 1 
+        snake'    = case status of
+                    Playing -> case food of
+                               Nothing -> moveSnake snake{snakeNeedGrow=True}
+                               _ -> moveSnake snake
+                    _ -> snake
+        snakeBody = tail $ map (\sn -> (node_x sn, node_y sn)) $ snakeInnerStates snake
+        score'    = case status of
+                    Playing -> case food of
+                               Nothing -> sc + 1
+                               _ -> sc
+                    _ -> sc
+        head_x    = node_x $ last $ snakeInnerStates snake'
+        head_y    = node_y $ last $ snakeInnerStates snake'
+        food'     = case food of
+                    Just x  -> if
+                               | x == (head_x, head_y) -> Nothing
+                               | otherwise             -> gs_food gs
+                    Nothing -> Just $ genFood tick
+        reset     = gs { gs_status = Stopped
+                       , gs_snakeStates = initState
+                       , gs_food=Nothing, gs_score=0
+                       }
         --  status == Playing = gs{gs_snakeStates = moveSnake snake}
         --  otherwise = gs
 
@@ -121,7 +121,7 @@ eventHandler (EventKey key Down modkey (x, y)) gs =
                     {- game status control -}
                     -- start/pause game
                     KeyHome
-                      | status == Stopped || status == Paused -> gs{gs_status = Playing}
+                      | status == Stopped || status == Paused -> gs{gs_status = Playing, gs_food=Just $ genFood tick'}
                       | status == Playing -> gs{gs_status = Paused}
                       | otherwise -> gs
                     -- reset game
@@ -131,6 +131,7 @@ eventHandler (EventKey key Down modkey (x, y)) gs =
   where status     = gs_status gs
         snakeState = gs_snakeStates gs
         dir        = snakeMoveDir snakeState
+        tick'      = tick gs
 eventHandler _ gs = gs
 
 renderer :: GameState -> Picture
@@ -236,7 +237,7 @@ data GameStatus = Stopped
                 | Playing
                 | Paused
                 deriving (Show, Eq)
-                
+
 type FoodLocation = (Int, Int) 
 
 data GameState = GameState{
